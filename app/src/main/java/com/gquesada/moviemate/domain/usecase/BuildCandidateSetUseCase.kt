@@ -4,6 +4,9 @@ import com.gquesada.moviemate.domain.model.Movie
 import com.gquesada.moviemate.domain.model.TasteSignals
 import com.gquesada.moviemate.domain.repository.MovieRepository
 import com.gquesada.moviemate.domain.repository.UserMovieRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 
 /**
@@ -27,7 +30,10 @@ class BuildCandidateSetUseCase(
         )
 
         val userHistoryMovies = (watched.map { it.movie } + favorites.map { it.movie } + watchlist.map { it.movie })
-        val cachedCatalog = movieRepository.getCachedMovies()
+        var cachedCatalog = movieRepository.getCachedMovies()
+        if (cachedCatalog.size < MIN_CATALOG_SIZE) {
+            cachedCatalog = backfillCatalog()
+        }
 
         val candidates = (userHistoryMovies + cachedCatalog)
             .distinctBy { it.tmdbId }
@@ -36,7 +42,27 @@ class BuildCandidateSetUseCase(
         return candidates to signals
     }
 
+    /**
+     * Tops up the local candidate pool toward the size design doc &sect;14 calls for
+     * (500-2,000 titles) by pulling a few extra pages of TMDB's list endpoints. Without this,
+     * a fresh install is limited to whatever the user has happened to scroll past on
+     * Home/Search, which is nowhere near enough for the Prompt API to pick from meaningfully.
+     */
+    private suspend fun backfillCatalog(): List<Movie> = coroutineScope {
+        (1..BACKFILL_PAGES).flatMap { page ->
+            listOf(
+                async { runCatching { movieRepository.getPopularMovies(page) }.getOrDefault(emptyList()) },
+                async { runCatching { movieRepository.getTopRatedMovies(page) }.getOrDefault(emptyList()) },
+                async { runCatching { movieRepository.getNowPlayingMovies(page) }.getOrDefault(emptyList()) },
+                async { runCatching { movieRepository.getUpcomingMovies(page) }.getOrDefault(emptyList()) },
+            )
+        }.awaitAll()
+        movieRepository.getCachedMovies()
+    }
+
     private companion object {
         const val MAX_CANDIDATES = 1000
+        const val MIN_CATALOG_SIZE = 300
+        const val BACKFILL_PAGES = 3
     }
 }

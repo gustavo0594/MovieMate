@@ -13,9 +13,9 @@ import org.koin.dsl.module
 val viewModelModule = module {
     viewModel { HomeViewModel(get()) }
     viewModel { SearchViewModel(get()) }
-    viewModel { (movieId: Int) -> MovieDetailViewModel(movieId, get(), get()) }
+    viewModel { (movieId: Int) -> MovieDetailViewModel(movieId, get(), get(), get()) }
     viewModel { FavoritesViewModel(get()) }
     viewModel { WatchedViewModel(get()) }
     viewModel { WatchlistViewModel(get()) }
-    viewModel { SurpriseMeViewModel(get()) }
+    viewModel { SurpriseMeViewModel(get(), get()) }
 }

@@ -12,4 +12,7 @@ interface RecommendationLogDao {
 
     @Query("SELECT movieId FROM recommendation_log ORDER BY generatedAt DESC LIMIT :limit")
     suspend fun getRecentlyRecommendedIds(limit: Int = 20): List<Int>
+
+    @Query("UPDATE recommendation_log SET wasAccepted = 1 WHERE movieId = :movieId AND wasAccepted IS NULL")
+    suspend fun markAccepted(movieId: Int)
 }

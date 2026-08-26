@@ -54,7 +54,9 @@ fun HomeScreen(
                 contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 24.dp),
             ) {
                 item { SurpriseMeHero(onClick = onSurpriseMeClick) }
-                items(uiState.sections, key = { it.type }) { section -> HomeSectionRow(section, onMovieClick) }
+                items(uiState.sections.filter { it.movies.isNotEmpty() }, key = { it.type }) { section ->
+                    HomeSectionRow(section, onMovieClick)
+                }
             }
         }
     }
@@ -93,6 +95,7 @@ private fun HomeSectionRow(section: HomeSection, onMovieClick: (Int) -> Unit) {
 }
 
 private fun HomeSectionType.displayName(): String = when (this) {
+    HomeSectionType.PICKED_FOR_YOU -> "Picked for You"
     HomeSectionType.POPULAR -> "Popular Movies"
     HomeSectionType.TOP_RATED -> "Top Rated"
     HomeSectionType.NOW_PLAYING -> "Now Playing"

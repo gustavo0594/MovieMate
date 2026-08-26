@@ -1,10 +1,16 @@
 package com.gquesada.moviemate.data.ai
 
+import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.prompt.GenerativeModel
 import com.google.mlkit.genai.prompt.Generation
+import com.gquesada.moviemate.domain.model.ModelAvailability
 import com.gquesada.moviemate.domain.model.Movie
 import com.gquesada.moviemate.domain.model.Recommendation
 import com.gquesada.moviemate.domain.model.TasteSignals
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -22,25 +28,21 @@ import kotlinx.serialization.json.Json
  * [recommend] never throws to the caller: it returns null whenever the model isn't ready,
  * fails, or answers with something outside the candidate set, so
  * [com.gquesada.moviemate.data.repository.RecommendationRepositoryImpl] can fall back to
- * [FallbackHeuristicRanker] instead of leaving "Surprise Me" stuck.
+ * [FallbackHeuristicRanker] instead of leaving "Surprise Me" stuck. [modelAvailability] tracks
+ * *why*, so the UI can show a download progress bar or an "unsupported device" message instead
+ * of a silent switch to the fallback ranker.
  */
 class PromptRecommendationEngine : RecommendationEngine {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    private val _modelAvailability = MutableStateFlow<ModelAvailability>(ModelAvailability.Unknown)
+    val modelAvailability: StateFlow<ModelAvailability> = _modelAvailability.asStateFlow()
+
     override suspend fun recommend(candidates: List<Movie>, signals: TasteSignals, userMood: String?): Recommendation? {
         val model = Generation.getClient()
         return try {
-            when (model.checkStatus()) {
-                FeatureStatus.AVAILABLE -> {}
-                FeatureStatus.DOWNLOADABLE -> {
-                    // Drain the download to completion; this can take a while on first run,
-                    // so a real UI should surface progress instead of blocking silently.
-                    model.download().collect { }
-                    if (model.checkStatus() != FeatureStatus.AVAILABLE) return null
-                }
-                else -> return null
-            }
+            if (!ensureModelReady(model)) return null
 
             val genreAffinity = RecommendationScoring.genreAffinity(signals)
             val shortlisted = candidates
@@ -63,9 +65,55 @@ class PromptRecommendationEngine : RecommendationEngine {
                 fromAi = true,
             )
         } catch (t: Throwable) {
+            _modelAvailability.value = ModelAvailability.Error
             null
         } finally {
             model.close()
+        }
+    }
+
+    /**
+     * Resolves [model]'s current status, downloading it first if needed, and updates
+     * [modelAvailability] along the way so a slow first-run download or an unsupported
+     * device (status [FeatureStatus.UNAVAILABLE]) is visible to the UI instead of just
+     * a generic spinner.
+     */
+    private suspend fun ensureModelReady(model: GenerativeModel): Boolean {
+        _modelAvailability.value = ModelAvailability.Checking
+        when (model.checkStatus()) {
+            FeatureStatus.AVAILABLE -> {
+                _modelAvailability.value = ModelAvailability.Ready
+                return true
+            }
+            FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> {
+                awaitDownload(model)
+                val ready = model.checkStatus() == FeatureStatus.AVAILABLE
+                _modelAvailability.value = if (ready) ModelAvailability.Ready else ModelAvailability.Error
+                return ready
+            }
+            FeatureStatus.UNAVAILABLE -> {
+                _modelAvailability.value = ModelAvailability.Unsupported
+                return false
+            }
+            else -> {
+                _modelAvailability.value = ModelAvailability.Error
+                return false
+            }
+        }
+    }
+
+    private suspend fun awaitDownload(model: GenerativeModel) {
+        var totalBytes: Long? = null
+        model.download().collect { status ->
+            _modelAvailability.value = when (status) {
+                is DownloadStatus.DownloadStarted -> {
+                    totalBytes = status.bytesToDownload
+                    ModelAvailability.Downloading(0L, totalBytes)
+                }
+                is DownloadStatus.DownloadProgress -> ModelAvailability.Downloading(status.totalBytesDownloaded, totalBytes)
+                DownloadStatus.DownloadCompleted -> ModelAvailability.Ready
+                is DownloadStatus.DownloadFailed -> ModelAvailability.Error
+            }
         }
     }
 

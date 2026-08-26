@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.gquesada.moviemate.domain.model.ModelAvailability
 import com.gquesada.moviemate.domain.model.Recommendation
 import com.gquesada.moviemate.presentation.components.MovieRow
 import com.gquesada.moviemate.presentation.components.TmdbImage
@@ -64,7 +65,16 @@ fun SurpriseMeScreen(
             uiState.isLoading -> Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Text(
+                        loadingLabel(uiState.modelAvailability),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+            }
 
             uiState.error != null -> Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -87,6 +97,7 @@ fun SurpriseMeScreen(
             ) {
                 RecommendationCard(
                     recommendation = uiState.recommendation!!,
+                    modelAvailability = uiState.modelAvailability,
                     onClick = { onMovieClick(uiState.recommendation!!.movie.tmdbId) },
                 )
 
@@ -121,7 +132,7 @@ fun SurpriseMeScreen(
 }
 
 @Composable
-private fun RecommendationCard(recommendation: Recommendation, onClick: () -> Unit) {
+private fun RecommendationCard(recommendation: Recommendation, modelAvailability: ModelAvailability, onClick: () -> Unit) {
     Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Column {
             AsyncImage(
@@ -145,10 +156,35 @@ private fun RecommendationCard(recommendation: Recommendation, onClick: () -> Un
                 )
                 Text("Why this movie?", style = MaterialTheme.typography.labelLarge)
                 Text(recommendation.reason, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                if (!recommendation.fromAi && modelAvailability == ModelAvailability.Unsupported) {
+                    Text(
+                        "Your device doesn't support the on-device AI model, so this is a smart match " +
+                            "based on your taste instead.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
                 OutlinedButton(onClick = onClick, modifier = Modifier.padding(top = 16.dp)) {
                     Text("See details")
                 }
             }
         }
     }
+}
+
+private fun loadingLabel(availability: ModelAvailability): String = when (availability) {
+    is ModelAvailability.Downloading -> {
+        val total = availability.totalBytes
+        if (total != null && total > 0) {
+            val percent = (availability.bytesDownloaded * 100 / total).coerceIn(0, 100)
+            "Downloading on-device AI model… $percent%"
+        } else {
+            "Downloading on-device AI model…"
+        }
+    }
+    ModelAvailability.Checking -> "Checking on-device AI availability…"
+    ModelAvailability.Unsupported -> "This device doesn't support the on-device AI model — picking a smart match instead…"
+    ModelAvailability.Error -> "On-device AI isn't available right now — picking a smart match instead…"
+    ModelAvailability.Ready, ModelAvailability.Unknown -> "Finding your next watch…"
 }
