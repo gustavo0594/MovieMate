@@ -1,0 +1,862 @@
+<title>MovieMate</title>
+<style>
+  :root {
+    --bg: #EEF1F0;
+    --surface: #FFFFFF;
+    --surface-2: #E4E9E7;
+    --ink: #14181C;
+    --ink-soft: #4B5560;
+    --line: #D3D9D7;
+    --accent: #A5691C;
+    --accent-soft: #F1E2C8;
+    --teal: #146661;
+    --teal-soft: #DCEEEC;
+    --plum: #6B4C82;
+    --plum-soft: #EAE1F0;
+    --code-bg: #E7EBE9;
+    --shadow: 0 1px 2px rgba(20,24,28,0.06), 0 8px 24px rgba(20,24,28,0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11161A;
+      --surface: #1B2227;
+      --surface-2: #212A30;
+      --ink: #E8EDEE;
+      --ink-soft: #9FACB2;
+      --line: #2A343A;
+      --accent: #E3A855;
+      --accent-soft: #3A2E1A;
+      --teal: #59B8B1;
+      --teal-soft: #17302E;
+      --plum: #B89BD1;
+      --plum-soft: #2C2438;
+      --code-bg: #191F24;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #11161A;
+    --surface: #1B2227;
+    --surface-2: #212A30;
+    --ink: #E8EDEE;
+    --ink-soft: #9FACB2;
+    --line: #2A343A;
+    --accent: #E3A855;
+    --accent-soft: #3A2E1A;
+    --teal: #59B8B1;
+    --teal-soft: #17302E;
+    --plum: #B89BD1;
+    --plum-soft: #2C2438;
+    --code-bg: #191F24;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  a { color: var(--teal); }
+  a:focus-visible, button:focus-visible, .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-weight: 600;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  code, .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  .eyebrow {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .cover h1 {
+    font-size: clamp(2.4rem, 5vw, 3.4rem);
+    letter-spacing: -0.01em;
+    margin: 10px 0 14px;
+  }
+  .cover .tagline {
+    max-width: 62ch;
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .meta-chip {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 7px 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    box-shadow: var(--shadow);
+  }
+  .meta-chip .k { color: var(--ink-soft); text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.08em; }
+  .meta-chip .v { font-weight: 600; }
+
+  /* ---------- Layout: TOC + content ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 216px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  .toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 8px;
+  }
+  .toc a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.86rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+  }
+  .toc a:hover { color: var(--ink); background: var(--surface-2); }
+  .toc .toc-num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 6px; font-size: 0.78rem; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 8px; }
+    .toc {
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      gap: 4px;
+      padding: 4px 0 16px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 24px;
+    }
+    .toc a { white-space: nowrap; }
+  }
+
+  main.content { min-width: 0; }
+
+  section { padding: 40px 0; border-bottom: 1px solid var(--line); }
+  section:last-child { border-bottom: none; }
+
+  .section-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+  .section-head h2 { font-size: 1.7rem; }
+  .section-num { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 0.82rem; }
+
+  p { max-width: 68ch; }
+  .prose p + p { margin-top: 12px; }
+
+  ul.clean, ol.clean { max-width: 68ch; padding-left: 1.2em; margin: 10px 0; }
+  ul.clean li, ol.clean li { margin: 4px 0; }
+
+  /* ---------- Callouts ---------- */
+  .callout {
+    max-width: 74ch;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--teal);
+    background: var(--teal-soft);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 18px 0;
+  }
+  .callout .callout-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 6px;
+  }
+  .callout p { margin: 0; }
+  .callout.amber { border-left-color: var(--accent); background: var(--accent-soft); }
+  .callout.amber .callout-label { color: var(--accent); }
+
+  /* ---------- Cards / grids ---------- */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { font-size: 1.02rem; margin-bottom: 8px; }
+  .card h3 .tag { display: inline-block; margin-left: 8px; }
+  .card p { font-size: 0.92rem; color: var(--ink-soft); margin: 0; max-width: none; }
+  .card .layout-note {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 0.84rem;
+  }
+  .card .layout-note .k { color: var(--ink-soft); }
+
+  .tag {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+  }
+  .tag.p0 { background: var(--accent-soft); color: var(--accent); }
+  .tag.p1 { background: var(--teal-soft); color: var(--teal); }
+  .tag.p2 { background: var(--plum-soft); color: var(--plum); }
+
+  /* ---------- Tables ---------- */
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 0.9rem; }
+  caption { text-align: left; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 8px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 700; }
+  td code { color: var(--teal); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- Figures / diagrams ---------- */
+  figure { margin: 22px 0; }
+  .diagram-wrap {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption { font-size: 0.84rem; color: var(--ink-soft); margin-top: 10px; max-width: 68ch; }
+
+  .diagram-wrap text { fill: currentColor; }
+  .diagram-wrap .box { fill: var(--surface-2); stroke: var(--line); }
+  .diagram-wrap .box-accent { fill: var(--accent-soft); stroke: var(--accent); }
+  .diagram-wrap .box-teal { fill: var(--teal-soft); stroke: var(--teal); }
+  .diagram-wrap .line { stroke: currentColor; opacity: 0.55; }
+  .diagram-wrap .label { fill: var(--ink-soft); }
+
+  footer.colophon {
+    padding-top: 32px;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+  }
+</style>
+
+<div class="page">
+
+  <header class="cover">
+    <div class="eyebrow">Android Application &middot; Design Blueprint</div>
+    <h1>MovieMate</h1>
+    <p class="tagline">A local-first, on-device movie assistant. TMDB supplies the catalog, Room remembers what the
+      viewer has watched, and the ML Kit GenAI Prompt API picks tonight's movie from a closed set of real
+      candidates &mdash; on the phone, with no account and no server.</p>
+    <div class="meta-row">
+      <div class="meta-chip"><span class="k">Platform</span><span class="v">Android &middot; phone, tablet, foldable</span></div>
+      <div class="meta-chip"><span class="k">UI</span><span class="v">Kotlin + Jetpack Compose</span></div>
+      <div class="meta-chip"><span class="k">Catalog</span><span class="v">TMDB API v3</span></div>
+      <div class="meta-chip"><span class="k">Local store</span><span class="v">Room</span></div>
+      <div class="meta-chip"><span class="k">Intelligence</span><span class="v">ML Kit GenAI Prompt API (on-device)</span></div>
+      <div class="meta-chip"><span class="k">Accounts</span><span class="v">None</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <a href="#overview"><span class="toc-num">01</span>Overview</a>
+      <a href="#architecture"><span class="toc-num">02</span>Architecture</a>
+      <a href="#dataflow"><span class="toc-num">03</span>Local-First Flow</a>
+      <a href="#navigation"><span class="toc-num">04</span>Navigation Model</a>
+      <a href="#adaptive"><span class="toc-num">05</span>Adaptive Layout</a>
+      <a href="#screens"><span class="toc-num">06</span>Screen Designs</a>
+      <a href="#recommendation"><span class="toc-num">07</span>Recommendation Engine</a>
+      <a href="#datamodel"><span class="toc-num">08</span>Data Model</a>
+      <a href="#stack"><span class="toc-num">09</span>Tech Stack</a>
+      <a href="#roadmap"><span class="toc-num">10</span>MVP Roadmap</a>
+    </nav>
+
+    <main class="content">
+
+      <section id="overview">
+        <div class="section-head">
+          <span class="section-num">01 &middot; Overview</span>
+          <h2>What the app is, and isn&rsquo;t</h2>
+        </div>
+        <div class="prose">
+          <p>MovieMate is not a TMDB browser with a watchlist bolted on. Its job is to answer one question &mdash;
+            <em>what should I watch tonight?</em> &mdash; using a memory of what the viewer has actually watched,
+            rated, and saved. TMDB is the encyclopedia; Room is the diary; the Prompt API is the friend who has
+            read the diary and picks from a shelf of movies that actually exist.</p>
+        </div>
+        <div class="grid-2" style="margin-top:18px;">
+          <div class="card">
+            <h3>In scope for MVP</h3>
+            <p>Discover, search, and inspect movies via TMDB &middot; favorite / watch / watchlist any movie &middot;
+              optional 1&ndash;5 star personal rating &middot; trailers &middot; a local candidate catalog of
+              500&ndash;2,000 titles &middot; on-device &ldquo;Surprise Me&rdquo; recommendations with a stated reason.</p>
+          </div>
+          <div class="card">
+            <h3>Explicitly out of scope</h3>
+            <p>Accounts, cloud sync, a custom backend, TV shows, streaming availability, social features, and any
+              server-side ML. Everything the app knows about the user lives only in that device&rsquo;s Room database.</p>
+          </div>
+        </div>
+        <div class="callout">
+          <div class="callout-label">Design thesis</div>
+          <p>Every screen and every data decision below optimizes for one loop: <strong>watch &rarr; rate &rarr; the
+            next recommendation gets sharper.</strong> If a feature doesn&rsquo;t feed that loop or help the user
+            act on tonight&rsquo;s pick, it doesn&rsquo;t belong on Home.</p>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="section-head">
+          <span class="section-num">02 &middot; Architecture</span>
+          <h2>Clean architecture, three layers, one direction of dependency</h2>
+        </div>
+        <div class="prose">
+          <p>Presentation and data both depend inward on domain; domain depends on nothing. This is what makes the
+            recommendation engine swappable later (a different on-device model, or eventually a server) without
+            touching a single Composable.</p>
+        </div>
+
+        <figure>
+          <div class="diagram-wrap">
+            <svg viewBox="0 0 900 320" role="img" aria-label="Three layer architecture: presentation and data layers both depend inward on the domain layer, which has no outward dependencies">
+              <defs>
+                <marker id="arrow1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="currentColor" opacity="0.6"/>
+                </marker>
+              </defs>
+
+              <rect x="30" y="60" width="230" height="200" rx="10" class="box"/>
+              <text x="145" y="90" text-anchor="middle" font-size="13" font-weight="700">Presentation</text>
+              <text x="145" y="112" text-anchor="middle" font-size="11" class="label">Compose screens</text>
+              <text x="145" y="130" text-anchor="middle" font-size="11" class="label">ViewModels (StateFlow)</text>
+              <text x="145" y="148" text-anchor="middle" font-size="11" class="label">NavigationSuiteScaffold</text>
+              <text x="145" y="166" text-anchor="middle" font-size="11" class="label">WindowSizeClass-aware UI</text>
+
+              <rect x="335" y="30" width="230" height="260" rx="10" class="box-accent"/>
+              <text x="450" y="60" text-anchor="middle" font-size="13" font-weight="700">Domain</text>
+              <text x="450" y="82" text-anchor="middle" font-size="11" class="label">Use cases</text>
+              <text x="450" y="100" text-anchor="middle" font-size="11" class="label">(GetRecommendation,</text>
+              <text x="450" y="118" text-anchor="middle" font-size="11" class="label">BuildCandidateSet, ...)</text>
+              <text x="450" y="142" text-anchor="middle" font-size="11" class="label">Repository interfaces</text>
+              <text x="450" y="160" text-anchor="middle" font-size="11" class="label">Domain models</text>
+              <text x="450" y="178" text-anchor="middle" font-size="11" class="label">(Movie, UserMovieState)</text>
+              <text x="450" y="202" text-anchor="middle" font-size="10.5" font-style="italic" class="label">no Android / SDK imports</text>
+
+              <rect x="640" y="60" width="230" height="200" rx="10" class="box"/>
+              <text x="755" y="90" text-anchor="middle" font-size="13" font-weight="700">Data</text>
+              <text x="755" y="112" text-anchor="middle" font-size="11" class="label">TmdbApi (Retrofit)</text>
+              <text x="755" y="130" text-anchor="middle" font-size="11" class="label">Room DAOs + entities</text>
+              <text x="755" y="148" text-anchor="middle" font-size="11" class="label">Repository implementations</text>
+              <text x="755" y="166" text-anchor="middle" font-size="11" class="label">PromptApiClient (ML Kit)</text>
+
+              <line x1="260" y1="150" x2="330" y2="150" class="line" stroke-width="1.6" marker-end="url(#arrow1)"/>
+              <text x="295" y="140" text-anchor="middle" font-size="10" class="label">depends on</text>
+
+              <line x1="640" y1="150" x2="570" y2="150" class="line" stroke-width="1.6" marker-end="url(#arrow1)"/>
+              <text x="605" y="140" text-anchor="middle" font-size="10" class="label">depends on</text>
+            </svg>
+          </div>
+          <figcaption>Presentation and data are the only layers that know about Android, Retrofit, Room, or ML Kit.
+            Domain defines the contracts; both outer layers point at it, never the reverse.</figcaption>
+        </figure>
+      </section>
+
+      <section id="dataflow">
+        <div class="section-head">
+          <span class="section-num">03 &middot; Local-First Flow</span>
+          <h2>From TMDB metadata to a recommendation, end to end</h2>
+        </div>
+        <div class="prose">
+          <p>Two things get cached from TMDB: catalog metadata (facts about a movie) and the user&rsquo;s relationship
+            to it (a fact only this device knows). The candidate builder joins them before the model ever runs.</p>
+        </div>
+
+        <figure>
+          <div class="diagram-wrap">
+            <svg viewBox="0 0 1080 260" role="img" aria-label="Data flow: TMDB API through remote data source into Room, split into favorites, watched and watchlist state, recombined into a candidate set, sent to the on-device ML Kit Prompt API, producing a recommendation">
+              <defs>
+                <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="currentColor" opacity="0.6"/>
+                </marker>
+              </defs>
+
+              <rect x="10" y="100" width="120" height="60" rx="8" class="box"/>
+              <text x="70" y="135" text-anchor="middle" font-size="12" font-weight="700">TMDB API</text>
+
+              <rect x="180" y="100" width="140" height="60" rx="8" class="box"/>
+              <text x="250" y="128" text-anchor="middle" font-size="11" font-weight="700">Remote data</text>
+              <text x="250" y="144" text-anchor="middle" font-size="11" font-weight="700">source</text>
+
+              <rect x="370" y="100" width="120" height="60" rx="8" class="box-teal"/>
+              <text x="430" y="128" text-anchor="middle" font-size="11" font-weight="700">Room</text>
+              <text x="430" y="144" text-anchor="middle" font-size="10.5" class="label">movie cache</text>
+
+              <rect x="540" y="20" width="150" height="50" rx="8" class="box"/>
+              <text x="615" y="50" text-anchor="middle" font-size="10.5">Favorites &middot; Watched &middot; Watchlist</text>
+
+              <rect x="540" y="185" width="150" height="50" rx="8" class="box"/>
+              <text x="615" y="207" text-anchor="middle" font-size="10.5">Personal ratings</text>
+              <text x="615" y="221" text-anchor="middle" font-size="10.5">(weighted highest)</text>
+
+              <rect x="740" y="100" width="130" height="60" rx="8" class="box-accent"/>
+              <text x="805" y="122" text-anchor="middle" font-size="10.5" font-weight="700">Candidate set</text>
+              <text x="805" y="138" text-anchor="middle" font-size="10" class="label">500&ndash;2,000 titles</text>
+              <text x="805" y="152" text-anchor="middle" font-size="10" class="label">+ user signals</text>
+
+              <rect x="920" y="100" width="150" height="60" rx="8" class="box-teal"/>
+              <text x="995" y="122" text-anchor="middle" font-size="10.5" font-weight="700">ML Kit Prompt API</text>
+              <text x="995" y="138" text-anchor="middle" font-size="10" class="label">on-device, closed-set</text>
+              <text x="995" y="152" text-anchor="middle" font-size="10" class="label">selection only</text>
+
+              <line x1="130" y1="130" x2="176" y2="130" class="line" stroke-width="1.6" marker-end="url(#arrow2)"/>
+              <text x="153" y="120" text-anchor="middle" font-size="9.5" class="label">fetch</text>
+
+              <line x1="320" y1="130" x2="366" y2="130" class="line" stroke-width="1.6" marker-end="url(#arrow2)"/>
+              <text x="343" y="120" text-anchor="middle" font-size="9.5" class="label">cache</text>
+
+              <line x1="430" y1="100" x2="600" y2="70" class="line" stroke-width="1.4" marker-end="url(#arrow2)"/>
+              <line x1="430" y1="160" x2="600" y2="200" class="line" stroke-width="1.4" marker-end="url(#arrow2)"/>
+
+              <line x1="690" y1="55" x2="742" y2="115" class="line" stroke-width="1.4" marker-end="url(#arrow2)"/>
+              <line x1="690" y1="205" x2="742" y2="145" class="line" stroke-width="1.4" marker-end="url(#arrow2)"/>
+
+              <line x1="870" y1="130" x2="916" y2="130" class="line" stroke-width="1.6" marker-end="url(#arrow2)"/>
+              <text x="893" y="120" text-anchor="middle" font-size="9.5" class="label">prompt</text>
+            </svg>
+          </div>
+          <figcaption>Metadata flows in one direction from TMDB; taste signals are written only by the user, on this
+            device, and are never sent anywhere &mdash; they&rsquo;re joined with the metadata at candidate-build time.</figcaption>
+        </figure>
+
+        <div class="callout amber">
+          <div class="callout-label">Core rule</div>
+          <p>The Prompt API never free-generates a title. It is handed a numbered list of real candidate movies and
+            must answer with an ID from that list. See &sect;07 for how this is enforced.</p>
+        </div>
+      </section>
+
+      <section id="navigation">
+        <div class="section-head">
+          <span class="section-num">04 &middot; Navigation Model</span>
+          <h2>Four primary destinations, three secondary flows</h2>
+        </div>
+        <div class="prose">
+          <p>Primary destinations are the ones a viewer returns to daily: <strong>Home, Watchlist, Favorites,
+            Watched</strong>. Everything else &mdash; Search, Movie Details, the recommendation screen, the trailer
+            player &mdash; is reached by drilling in, not by a nav destination of its own, so the primary nav stays at
+            exactly four items on every device class.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Primary <span class="tag">persistent nav</span></h3>
+            <p>Home &middot; Watchlist &middot; Favorites &middot; Watched. Rendered by a single
+              <code>NavigationSuiteScaffold</code>, which is what actually changes shape across device sizes
+              (&sect;05) &mdash; the destinations themselves never change.</p>
+          </div>
+          <div class="card">
+            <h3>Secondary <span class="tag">pushed / overlay</span></h3>
+            <p>Search (top-bar entry point from any primary tab) &middot; Movie Details &middot; Surprise&nbsp;Me /
+              Recommendation &middot; Trailer player (full-screen player, dismissable).</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="adaptive">
+        <div class="section-head">
+          <span class="section-num">05 &middot; Adaptive Layout</span>
+          <h2>One codebase, three window size classes</h2>
+        </div>
+        <div class="prose">
+          <p>The app is built around Material 3&rsquo;s adaptive layer (<code>WindowSizeClass</code> +
+            <code>NavigationSuiteScaffold</code> + <code>ListDetailPaneScaffold</code>) rather than separate
+            phone/tablet flavors. The same navigation graph and the same screen composables render differently
+            depending on available width &mdash; including the two panes of an unfolded foldable, which report as
+            <strong>Medium</strong> or <strong>Expanded</strong> the moment the hinge opens.</p>
+        </div>
+
+        <figure>
+          <div class="diagram-wrap">
+            <svg viewBox="0 0 1040 400" role="img" aria-label="Three device layouts: compact phone with bottom navigation bar and a single column list, medium tablet with a navigation rail and a two column grid, expanded tablet or unfolded foldable with a navigation rail, a list pane and a detail pane side by side">
+              <!-- Compact phone -->
+              <rect x="20" y="20" width="230" height="340" rx="18" class="box" stroke-width="2"/>
+              <rect x="34" y="40" width="202" height="256" rx="4" class="box-teal" stroke-width="1"/>
+              <rect x="42" y="50" width="90" height="66" rx="4" class="box" stroke-width="1"/>
+              <rect x="42" y="122" width="60" height="60" rx="4" class="box" stroke-width="1"/>
+              <rect x="108" y="122" width="60" height="60" rx="4" class="box" stroke-width="1"/>
+              <rect x="42" y="188" width="60" height="60" rx="4" class="box" stroke-width="1"/>
+              <rect x="108" y="188" width="60" height="60" rx="4" class="box" stroke-width="1"/>
+              <rect x="34" y="304" width="202" height="36" rx="4" class="box-accent" stroke-width="1"/>
+              <circle cx="66" cy="322" r="6" class="box-accent"/>
+              <circle cx="105" cy="322" r="6" class="box-accent"/>
+              <circle cx="144" cy="322" r="6" class="box-accent"/>
+              <circle cx="183" cy="322" r="6" class="box-accent"/>
+              <text x="135" y="382" text-anchor="middle" font-size="12" font-weight="700">Compact &middot; &lt;600dp</text>
+              <text x="135" y="398" text-anchor="middle" font-size="10.5" class="label">bottom nav &middot; single column &middot; full-screen detail</text>
+
+              <!-- Medium tablet portrait -->
+              <rect x="330" y="20" width="330" height="340" rx="18" class="box" stroke-width="2"/>
+              <rect x="344" y="34" width="58" height="312" rx="4" class="box-accent" stroke-width="1"/>
+              <circle cx="373" cy="58" r="6" class="box-accent"/>
+              <circle cx="373" cy="84" r="6" class="box-accent"/>
+              <circle cx="373" cy="110" r="6" class="box-accent"/>
+              <circle cx="373" cy="136" r="6" class="box-accent"/>
+              <rect x="414" y="34" width="230" height="312" rx="4" class="box-teal" stroke-width="1"/>
+              <rect x="424" y="44" width="98" height="80" rx="4" class="box" stroke-width="1"/>
+              <rect x="530" y="44" width="98" height="80" rx="4" class="box" stroke-width="1"/>
+              <rect x="424" y="134" width="98" height="80" rx="4" class="box" stroke-width="1"/>
+              <rect x="530" y="134" width="98" height="80" rx="4" class="box" stroke-width="1"/>
+              <text x="495" y="382" text-anchor="middle" font-size="12" font-weight="700">Medium &middot; 600&ndash;839dp</text>
+              <text x="495" y="398" text-anchor="middle" font-size="10.5" class="label">nav rail &middot; 2-column grid &middot; detail still full-screen</text>
+
+              <!-- Expanded tablet landscape / unfolded foldable -->
+              <rect x="710" y="60" width="330" height="260" rx="14" class="box" stroke-width="2"/>
+              <rect x="722" y="72" width="52" height="236" rx="4" class="box-accent" stroke-width="1"/>
+              <circle cx="748" cy="94" r="5.5" class="box-accent"/>
+              <circle cx="748" cy="118" r="5.5" class="box-accent"/>
+              <circle cx="748" cy="142" r="5.5" class="box-accent"/>
+              <rect x="784" y="72" width="120" height="236" rx="4" class="box-teal" stroke-width="1"/>
+              <rect x="792" y="82" width="104" height="40" rx="3" class="box" stroke-width="1"/>
+              <rect x="792" y="128" width="104" height="40" rx="3" class="box" stroke-width="1"/>
+              <rect x="792" y="174" width="104" height="40" rx="3" class="box" stroke-width="1"/>
+              <rect x="914" y="72" width="112" height="236" rx="4" class="box-accent" stroke-width="1"/>
+              <text x="970" y="96" text-anchor="middle" font-size="10">Poster</text>
+              <text x="970" y="112" text-anchor="middle" font-size="9" class="label">detail pane</text>
+              <line x1="906" y1="80" x2="906" y2="300" class="line" stroke-width="1" stroke-dasharray="3,3"/>
+              <text x="875" y="382" text-anchor="middle" font-size="12" font-weight="700">Expanded &middot; &ge;840dp</text>
+              <text x="875" y="398" text-anchor="middle" font-size="10.5" class="label">nav rail (labeled) &middot; list-detail two-pane</text>
+            </svg>
+          </div>
+          <figcaption>The nav destination set never changes; only its container (<code>NavigationBar</code> &rarr;
+            <code>NavigationRail</code>) and whether Details gets its own pane or a full screen do.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <caption>Behavior contract per window size class</caption>
+            <thead>
+              <tr><th>Window size class</th><th>Typical device</th><th>Primary nav</th><th>Content</th><th>Search / Details</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Compact</strong><br><span class="mono">&lt;600dp</span></td>
+                <td>Phone, portrait</td>
+                <td><code>NavigationBar</code> (bottom)</td>
+                <td>1-column carousels / lists; <code>LazyVerticalGrid</code> with 2 fixed columns for poster grids</td>
+                <td>Full-screen destinations, pushed on the back stack</td>
+              </tr>
+              <tr>
+                <td><strong>Medium</strong><br><span class="mono">600&ndash;839dp</span></td>
+                <td>Tablet portrait, unfolded foldable (cover-to-inner)</td>
+                <td><code>NavigationRail</code> (icons only)</td>
+                <td><code>GridCells.Adaptive(128.dp)</code> &rarr; 3&ndash;4 columns</td>
+                <td>Search results still push to a full-screen Details (no room yet for a second pane)</td>
+              </tr>
+              <tr>
+                <td><strong>Expanded</strong><br><span class="mono">&ge;840dp</span></td>
+                <td>Tablet landscape, unfolded foldable landscape, Chromebook</td>
+                <td><code>NavigationRail</code> with labels, or permanent drawer</td>
+                <td><code>GridCells.Adaptive(128.dp)</code> &rarr; 5&ndash;6 columns</td>
+                <td><code>ListDetailPaneScaffold</code>: results/list stays visible at ~360dp while Details renders beside it</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <div class="callout-label">Foldable posture</div>
+          <p>On a foldable in table-top or book posture, <code>WindowInfoTracker</code> reports the hinge as a
+            physical feature. The layout treats it like a hard gutter: on a book-posture unfold, the nav rail +
+            list live on one leaf and the detail pane on the other, so no card or button is ever split by the crease.</p>
+        </div>
+      </section>
+
+      <section id="screens">
+        <div class="section-head">
+          <span class="section-num">06 &middot; Screen Designs</span>
+          <h2>Screen by screen, compact vs. expanded</h2>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Home <span class="tag p0">P0</span></h3>
+            <p>Top: <strong>Surprise Me</strong> hero card &mdash; full-width, high-contrast, one tap to the
+              recommendation screen. Below: short, TMDB-powered rows &mdash; Picked for You, Popular, Top Rated,
+              Now Playing, Upcoming. Capped at five rows so Home reads as curated, not as a database dump.</p>
+            <div class="layout-note"><span class="k">Compact</span> vertically scrolling rows, horizontally
+              scrolling carousels inside each.<br><span class="k">Expanded</span> hero spans the content pane full
+              width; rows below reflow into a responsive poster grid instead of horizontal carousels, since width
+              allows it.</div>
+          </div>
+
+          <div class="card">
+            <h3>Search <span class="tag p0">P0</span></h3>
+            <p>Top app bar search field &rarr; TMDB search results as a poster grid/list. Selecting a result opens
+              Movie Details. Every result supports the same quick actions as Home: favorite, watchlist, mark watched.</p>
+            <div class="layout-note"><span class="k">Compact</span> results replace the screen; Details is pushed
+              full-screen.<br><span class="k">Expanded</span> results list is the fixed list pane; Details renders
+              live in the pane beside it as selection changes &mdash; no navigation transition.</div>
+          </div>
+
+          <div class="card">
+            <h3>Movie Details <span class="tag p0">P0</span></h3>
+            <p>Backdrop with poster overlap, title, release year, runtime, TMDB rating, genres, overview, cast row,
+              director, trailer entry point, similar-movies row. Action row: Favorite &middot; Watchlist &middot;
+              Mark Watched &middot; Watch Trailer. If already watched, the user&rsquo;s own star rating replaces the
+              &ldquo;Mark Watched&rdquo; affordance.</p>
+            <div class="layout-note"><span class="k">Compact</span> single scrolling column, full-bleed backdrop.
+              <br><span class="k">Expanded (as a pane)</span> backdrop shortens to a header strip so the pane isn&rsquo;t
+              dominated by imagery; actions and metadata sit in a fixed side column while cast/similar scroll.</div>
+          </div>
+
+          <div class="card">
+            <h3>Favorites &middot; Watchlist &middot; Watched <span class="tag p0">P0</span></h3>
+            <p>Same list component, three filtered views over one underlying store &mdash; a movie can appear in more
+              than one. Watched cards additionally surface the star rating and watched date; Watchlist and Favorites
+              are unordered poster grids with a status chip.</p>
+            <div class="layout-note"><span class="k">Compact</span> 2-column poster grid.<br><span class="k">Medium</span>
+              3&ndash;4 columns.<br><span class="k">Expanded</span> 5&ndash;6 columns, or a list-detail pane so tapping
+              a poster opens Details beside the grid instead of covering it.</div>
+          </div>
+
+          <div class="card">
+            <h3>Surprise Me / Recommendation <span class="tag p1">P1</span></h3>
+            <p>One large &ldquo;your pick&rdquo; card &mdash; poster, title, match percentage &mdash; with a
+              &ldquo;Why this movie?&rdquo; panel underneath naming the rated movies and taste signals behind it.
+              A secondary row offers 2&ndash;3 runner-up candidates.</p>
+            <div class="layout-note"><span class="k">Compact</span> pick card, then explanation, then runners-up,
+              stacked.<br><span class="k">Expanded</span> two-pane: pick + poster large on the left, explanation and
+              runners-up in a fixed right rail &mdash; closer to a verdict screen than a list.</div>
+          </div>
+
+          <div class="card">
+            <h3>Trailer Player <span class="tag p1">P1</span></h3>
+            <p>Full-screen video surface (ExoPlayer/YouTube playback from the TMDB video key), auto-rotates with
+              device orientation, dismiss returns to exactly where Details was scrolled to.</p>
+            <div class="layout-note"><span class="k">Compact</span> full-screen modal, forces landscape for playback.
+              <br><span class="k">Expanded</span> can play inline within the Details pane at native aspect ratio
+              instead of taking over the whole window.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="recommendation">
+        <div class="section-head">
+          <span class="section-num">07 &middot; Recommendation Engine</span>
+          <h2>Closed-set selection with a validation guard</h2>
+        </div>
+        <div class="prose">
+          <p>An on-device generative model can still name a movie that isn&rsquo;t in the candidate set, or misquote
+            an ID. The app never trusts the raw response &mdash; every result is checked against the candidate list
+            before it reaches the UI.</p>
+        </div>
+
+        <figure>
+          <div class="diagram-wrap">
+            <svg viewBox="0 0 1000 260" role="img" aria-label="Recommendation flow: candidate set and signals feed a prompt template into the ML Kit Prompt API, which returns a JSON movie id and reason; the id is validated against the candidate set, and only a valid id is shown to the user, otherwise a genre-weighted fallback ranker picks the movie instead">
+              <defs>
+                <marker id="arrow3" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                  <polygon points="0,0 8,4 0,8" fill="currentColor" opacity="0.6"/>
+                </marker>
+              </defs>
+
+              <rect x="10" y="90" width="150" height="70" rx="8" class="box"/>
+              <text x="85" y="118" text-anchor="middle" font-size="11" font-weight="700">Candidates +</text>
+              <text x="85" y="134" text-anchor="middle" font-size="11" font-weight="700">taste signals</text>
+
+              <rect x="200" y="90" width="150" height="70" rx="8" class="box"/>
+              <text x="275" y="118" text-anchor="middle" font-size="11" font-weight="700">Prompt</text>
+              <text x="275" y="134" text-anchor="middle" font-size="11" font-weight="700">template</text>
+
+              <rect x="390" y="90" width="170" height="70" rx="8" class="box-teal"/>
+              <text x="475" y="118" text-anchor="middle" font-size="11" font-weight="700">ML Kit Prompt API</text>
+              <text x="475" y="134" text-anchor="middle" font-size="10" class="label">Gemini Nano, on-device</text>
+
+              <rect x="600" y="90" width="150" height="70" rx="8" class="box"/>
+              <text x="675" y="112" text-anchor="middle" font-size="10.5" font-weight="700">JSON reply</text>
+              <text x="675" y="128" text-anchor="middle" font-size="10" class="mono label">movieId, reason</text>
+              <text x="675" y="142" text-anchor="middle" font-size="10" class="mono label">matchScore</text>
+
+              <rect x="790" y="20" width="190" height="60" rx="8" class="box-accent"/>
+              <text x="885" y="45" text-anchor="middle" font-size="11" font-weight="700">Valid ID?</text>
+              <text x="885" y="61" text-anchor="middle" font-size="9.5" class="label">in candidate set &mdash; yes</text>
+
+              <rect x="790" y="180" width="190" height="60" rx="8" class="box"/>
+              <text x="885" y="203" text-anchor="middle" font-size="10.5" font-weight="700">Fallback ranker</text>
+              <text x="885" y="219" text-anchor="middle" font-size="9.5" class="label">genre/rating heuristic &mdash; no</text>
+
+              <line x1="160" y1="125" x2="196" y2="125" class="line" stroke-width="1.6" marker-end="url(#arrow3)"/>
+              <line x1="350" y1="125" x2="386" y2="125" class="line" stroke-width="1.6" marker-end="url(#arrow3)"/>
+              <line x1="560" y1="125" x2="596" y2="125" class="line" stroke-width="1.6" marker-end="url(#arrow3)"/>
+              <line x1="750" y1="110" x2="786" y2="65" class="line" stroke-width="1.6" marker-end="url(#arrow3)"/>
+              <line x1="750" y1="140" x2="786" y2="200" class="line" stroke-width="1.6" marker-end="url(#arrow3)"/>
+
+              <line x1="885" y1="80" x2="885" y2="176" class="line" stroke-width="1" stroke-dasharray="3,3"/>
+
+              <rect x="1" y="0" width="0" height="0"/>
+            </svg>
+          </div>
+          <figcaption>An out-of-set or malformed ID never reaches the screen &mdash; it silently falls back to a
+            deterministic heuristic ranker so &ldquo;Surprise Me&rdquo; never dead-ends the user.</figcaption>
+        </figure>
+
+        <ul class="clean">
+          <li><strong>Inputs:</strong> watched history, personal ratings (weighted above TMDB&rsquo;s), favorites,
+            watchlist, candidate genres/cast/directors/runtime/year/rating, and an optional free-text mood
+            (&ldquo;something funny tonight&rdquo;).</li>
+          <li><strong>Output contract:</strong> <code>{ movieId: Int, matchScore: Int, reason: String }</code>,
+            requested and parsed as structured JSON, never freeform prose.</li>
+          <li><strong>Every recommendation is logged</strong> (movie, reason, score, timestamp, whether it was
+            later watched/favorited) so the loop in &sect;01 has a signal to learn from, not just a UI moment.</li>
+        </ul>
+      </section>
+
+      <section id="datamodel">
+        <div class="section-head">
+          <span class="section-num">08 &middot; Data Model</span>
+          <h2>Room schema</h2>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption><code>MovieEntity</code> &mdash; cached TMDB facts, refreshed on TTL, never user-specific</caption>
+            <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>tmdbId</code></td><td>Int</td><td>Primary key</td></tr>
+              <tr><td><code>title</code>, <code>overview</code></td><td>String</td><td>&mdash;</td></tr>
+              <tr><td><code>posterPath</code>, <code>backdropPath</code></td><td>String?</td><td>Resolved to a full URL by Coil at load time</td></tr>
+              <tr><td><code>releaseDate</code></td><td>String</td><td>ISO date</td></tr>
+              <tr><td><code>runtimeMinutes</code></td><td>Int?</td><td>Null until Movie Details has been fetched once</td></tr>
+              <tr><td><code>voteAverage</code>, <code>popularity</code></td><td>Float</td><td>TMDB values, unrelated to the user&rsquo;s own rating</td></tr>
+              <tr><td><code>genres</code>, <code>cast</code>, <code>directors</code></td><td>List&lt;String&gt; / JSON</td><td>Stored via a Room <code>TypeConverter</code></td></tr>
+              <tr><td><code>trailerKey</code></td><td>String?</td><td>YouTube key from TMDB videos</td></tr>
+              <tr><td><code>cachedAt</code></td><td>Long</td><td>Drives cache-eviction for the candidate pool</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap" style="margin-top:22px;">
+          <table>
+            <caption><code>UserMovieStateEntity</code> &mdash; the only table that constitutes &ldquo;the user&rsquo;s data&rdquo;</caption>
+            <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>movieId</code></td><td>Int</td><td>Primary key, foreign key &rarr; <code>MovieEntity.tmdbId</code></td></tr>
+              <tr><td><code>isFavorite</code>, <code>isWatched</code>, <code>isInWatchlist</code></td><td>Boolean</td><td>Independent flags, not mutually exclusive</td></tr>
+              <tr><td><code>personalRating</code></td><td>Int?</td><td>1&ndash;5, optional, only meaningful when <code>isWatched</code></td></tr>
+              <tr><td><code>watchedAt</code>, <code>addedToWatchlistAt</code></td><td>Long?</td><td>Epoch millis</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap" style="margin-top:22px;">
+          <table>
+            <caption><code>RecommendationLogEntity</code> &mdash; closes the feedback loop; not in the original spec, added because &sect;27&rsquo;s loop needs a record to learn from</caption>
+            <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>Long</td><td>Autogenerated primary key</td></tr>
+              <tr><td><code>movieId</code>, <code>reason</code>, <code>matchScore</code></td><td>Int / String / Int</td><td>Snapshot of what the model returned</td></tr>
+              <tr><td><code>generatedAt</code></td><td>Long</td><td>&mdash;</td></tr>
+              <tr><td><code>wasAccepted</code></td><td>Boolean?</td><td>Set true if the user later watched or favorited this pick</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="stack">
+        <div class="section-head">
+          <span class="section-num">09 &middot; Tech Stack</span>
+          <h2>What each layer is actually built with</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Concern</th><th>Choice</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>UI</td><td>Jetpack Compose + Material 3</td><td>Single declarative UI across all size classes</td></tr>
+              <tr><td>Adaptive nav/layout</td><td><code>material3-adaptive-navigation-suite</code>, <code>WindowSizeClass</code>, <code>ListDetailPaneScaffold</code></td><td>The mechanism behind &sect;05 &mdash; nav container and pane count are computed, not branched by device type</td></tr>
+              <tr><td>State</td><td>ViewModel + Kotlin Coroutines + Flow / StateFlow</td><td>Unidirectional data flow from Room straight to Compose</td></tr>
+              <tr><td>Local persistence</td><td>Room</td><td>The entire &ldquo;user data&rdquo; boundary in &sect;08</td></tr>
+              <tr><td>Networking</td><td>Retrofit + kotlinx.serialization</td><td>Typed TMDB DTOs, no reflection-based JSON</td></tr>
+              <tr><td>Large lists</td><td>Paging 3</td><td>TMDB discovery/search results, popular/top-rated rows</td></tr>
+              <tr><td>Images</td><td>Coil 3</td><td>Compose-native, handles poster/backdrop caching</td></tr>
+              <tr><td>Recommendation intelligence</td><td>ML Kit GenAI Prompt API</td><td>On-device, no network call, no server to build or pay for</td></tr>
+              <tr><td>Navigation</td><td>Navigation Compose, type-safe routes</td><td>One graph shared by every window size class</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="section-head">
+          <span class="section-num">10 &middot; MVP Roadmap</span>
+          <h2>Priority order</h2>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h3>P0 <span class="tag p0">ship first</span></h3>
+            <p>Home &middot; Search &middot; Movie Details &middot; TMDB integration &middot; Room &middot;
+              Favorites/Watched/Watchlist &middot; personal ratings &middot; candidate catalog &middot; Prompt API
+              recommendations.</p>
+          </div>
+          <div class="card">
+            <h3>P1 <span class="tag p1">next</span></h3>
+            <p>Surprise Me polish &middot; recommendation explanations &middot; trailers &middot; similar movies
+              &middot; candidate-catalog refresh strategy.</p>
+          </div>
+          <div class="card">
+            <h3>P2 <span class="tag p2">later</span></h3>
+            <p>Conversational movie assistant &middot; Movie Taste Profile &middot; streaming availability &middot;
+              finer-grained recommendation controls.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="colophon">Derived from <code>movie_recommendation_app_spec.md</code>. Positioning: TMDB is the
+    catalog, Room is the memory, the Prompt API is the judgment &mdash; none of it leaves the device.</footer>
+</div>
