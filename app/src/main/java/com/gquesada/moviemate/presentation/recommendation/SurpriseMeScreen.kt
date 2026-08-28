@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.gquesada.moviemate.domain.model.ModelAvailability
 import com.gquesada.moviemate.domain.model.Recommendation
+import com.gquesada.moviemate.presentation.components.ModelStatusBanner
 import com.gquesada.moviemate.presentation.components.MovieRow
 import com.gquesada.moviemate.presentation.components.TmdbImage
 import org.koin.androidx.compose.koinViewModel
@@ -53,12 +54,15 @@ fun SurpriseMeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Surprise Me") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                },
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("Surprise Me") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    },
+                )
+                ModelStatusBanner(modelAvailability = uiState.modelAvailability)
+            }
         },
     ) { padding ->
         when {

@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gquesada.moviemate.domain.model.ChatMessage
 import com.gquesada.moviemate.domain.model.ChatRole
 import com.gquesada.moviemate.domain.model.ModelAvailability
+import com.gquesada.moviemate.presentation.components.ModelStatusBanner
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,12 +60,15 @@ fun AssistantScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Ask MovieMate") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                },
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("Ask MovieMate") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    },
+                )
+                ModelStatusBanner(modelAvailability = uiState.modelAvailability)
+            }
         },
         bottomBar = {
             AssistantInputBar(
