@@ -28,4 +28,11 @@ interface RecommendationRepository {
 
     /** Ranks candidates with the deterministic heuristic only -- no Prompt API call -- for Home's "Picked for You". */
     suspend fun pickForYou(candidates: List<Movie>, signals: TasteSignals, count: Int): List<Movie>
+
+    /**
+     * Home's live top pick (design doc &sect;06): same heuristic ranker as [pickForYou], but
+     * shaped as a full [Recommendation] (with match score and reason) instead of a bare list,
+     * so Home can show it the same way "Surprise Me" does. Never calls the Prompt API.
+     */
+    suspend fun tonightsPick(candidates: List<Movie>, signals: TasteSignals): Recommendation?
 }

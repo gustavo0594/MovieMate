@@ -1,17 +1,11 @@
 package com.gquesada.moviemate.data.ai
 
-import com.google.mlkit.genai.common.DownloadStatus
-import com.google.mlkit.genai.common.FeatureStatus
-import com.google.mlkit.genai.prompt.GenerativeModel
 import com.google.mlkit.genai.prompt.Generation
 import com.gquesada.moviemate.domain.model.ModelAvailability
 import com.gquesada.moviemate.domain.model.Movie
 import com.gquesada.moviemate.domain.model.Recommendation
 import com.gquesada.moviemate.domain.model.TasteSignals
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
@@ -35,14 +29,14 @@ import kotlinx.serialization.json.Json
 class PromptRecommendationEngine : RecommendationEngine {
 
     private val json = Json { ignoreUnknownKeys = true }
+    private val readiness = PromptModelReadiness()
 
-    private val _modelAvailability = MutableStateFlow<ModelAvailability>(ModelAvailability.Unknown)
-    val modelAvailability: StateFlow<ModelAvailability> = _modelAvailability.asStateFlow()
+    val modelAvailability: StateFlow<ModelAvailability> = readiness.modelAvailability
 
     override suspend fun recommend(candidates: List<Movie>, signals: TasteSignals, userMood: String?): Recommendation? {
         val model = Generation.getClient()
         return try {
-            if (!ensureModelReady(model)) return null
+            if (!readiness.ensureModelReady(model)) return null
 
             val genreAffinity = RecommendationScoring.genreAffinity(signals)
             val shortlisted = candidates
@@ -65,55 +59,10 @@ class PromptRecommendationEngine : RecommendationEngine {
                 fromAi = true,
             )
         } catch (t: Throwable) {
-            _modelAvailability.value = ModelAvailability.Error
+            readiness.markError()
             null
         } finally {
             model.close()
-        }
-    }
-
-    /**
-     * Resolves [model]'s current status, downloading it first if needed, and updates
-     * [modelAvailability] along the way so a slow first-run download or an unsupported
-     * device (status [FeatureStatus.UNAVAILABLE]) is visible to the UI instead of just
-     * a generic spinner.
-     */
-    private suspend fun ensureModelReady(model: GenerativeModel): Boolean {
-        _modelAvailability.value = ModelAvailability.Checking
-        when (model.checkStatus()) {
-            FeatureStatus.AVAILABLE -> {
-                _modelAvailability.value = ModelAvailability.Ready
-                return true
-            }
-            FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> {
-                awaitDownload(model)
-                val ready = model.checkStatus() == FeatureStatus.AVAILABLE
-                _modelAvailability.value = if (ready) ModelAvailability.Ready else ModelAvailability.Error
-                return ready
-            }
-            FeatureStatus.UNAVAILABLE -> {
-                _modelAvailability.value = ModelAvailability.Unsupported
-                return false
-            }
-            else -> {
-                _modelAvailability.value = ModelAvailability.Error
-                return false
-            }
-        }
-    }
-
-    private suspend fun awaitDownload(model: GenerativeModel) {
-        var totalBytes: Long? = null
-        model.download().collect { status ->
-            _modelAvailability.value = when (status) {
-                is DownloadStatus.DownloadStarted -> {
-                    totalBytes = status.bytesToDownload
-                    ModelAvailability.Downloading(0L, totalBytes)
-                }
-                is DownloadStatus.DownloadProgress -> ModelAvailability.Downloading(status.totalBytesDownloaded, totalBytes)
-                DownloadStatus.DownloadCompleted -> ModelAvailability.Ready
-                is DownloadStatus.DownloadFailed -> ModelAvailability.Error
-            }
         }
     }
 
@@ -148,15 +97,34 @@ class PromptRecommendationEngine : RecommendationEngine {
         if (!userMood.isNullOrBlank()) {
             appendLine("Tonight's mood: \"$userMood\"")
         }
+        val favoritePeople = topPeople(signals)
+        if (favoritePeople.isNotEmpty()) {
+            appendLine("Favorite directors/actors (by frequency in watched+favorites): ${favoritePeople.joinToString(", ")}")
+        }
         appendLine()
-        appendLine("CANDIDATES (id | title (year) | genres | TMDB rating)")
+        appendLine("CANDIDATES (id | title (year) | genres | director | TMDB rating)")
         candidates.forEach { movie ->
             val year = movie.releaseDate.take(4)
-            appendLine("${movie.tmdbId} | ${movie.title} ($year) | ${movie.genres.joinToString("/")} | ${movie.voteAverage}")
+            val director = movie.directors.firstOrNull() ?: "unknown"
+            appendLine(
+                "${movie.tmdbId} | ${movie.title} ($year) | ${movie.genres.joinToString("/")} | " +
+                    "$director | ${movie.voteAverage}",
+            )
         }
+    }
+
+    /** Top directors/cast by frequency across watched+favorites (design doc &sect;13). */
+    private fun topPeople(signals: TasteSignals): List<String> {
+        val counts = mutableMapOf<String, Int>()
+        val allMovies = signals.watchedWithRatings.map { it.movie } + signals.favoriteMovies
+        allMovies.forEach { movie ->
+            (movie.directors + movie.cast).forEach { person -> counts[person] = (counts[person] ?: 0) + 1 }
+        }
+        return counts.entries.sortedByDescending { it.value }.take(TOP_PEOPLE_COUNT).map { it.key }
     }
 
     private companion object {
         const val MAX_CANDIDATES_IN_PROMPT = 120
+        const val TOP_PEOPLE_COUNT = 3
     }
 }

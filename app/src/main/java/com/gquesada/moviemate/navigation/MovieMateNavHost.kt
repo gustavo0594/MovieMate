@@ -6,12 +6,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.gquesada.moviemate.presentation.assistant.AssistantScreen
 import com.gquesada.moviemate.presentation.favorites.MovieListScreen
 import com.gquesada.moviemate.presentation.favorites.MovieListType
 import com.gquesada.moviemate.presentation.home.HomeScreen
 import com.gquesada.moviemate.presentation.moviedetail.MovieDetailScreen
 import com.gquesada.moviemate.presentation.recommendation.SurpriseMeScreen
 import com.gquesada.moviemate.presentation.search.SearchScreen
+import com.gquesada.moviemate.presentation.tasteprofile.TasteProfileScreen
 
 /** One nav graph, shared by every window size class (design doc &sect;05). */
 @Composable
@@ -21,6 +23,8 @@ fun MovieMateNavHost(navController: NavHostController, modifier: Modifier = Modi
             HomeScreen(
                 onSearchClick = { navController.navigate(SearchRoute) },
                 onSurpriseMeClick = { navController.navigate(SurpriseMeRoute) },
+                onTasteProfileClick = { navController.navigate(TasteProfileRoute) },
+                onAssistantClick = { navController.navigate(AssistantRoute) },
                 onMovieClick = { movieId -> navController.navigate(MovieDetailRoute(movieId)) },
             )
         }
@@ -61,6 +65,15 @@ fun MovieMateNavHost(navController: NavHostController, modifier: Modifier = Modi
         }
         composable<SurpriseMeRoute> {
             SurpriseMeScreen(
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movieId -> navController.navigate(MovieDetailRoute(movieId)) },
+            )
+        }
+        composable<TasteProfileRoute> {
+            TasteProfileScreen(onBack = { navController.popBackStack() })
+        }
+        composable<AssistantRoute> {
+            AssistantScreen(
                 onBack = { navController.popBackStack() },
                 onMovieClick = { movieId -> navController.navigate(MovieDetailRoute(movieId)) },
             )

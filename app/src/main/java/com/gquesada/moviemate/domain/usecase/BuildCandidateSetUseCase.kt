@@ -1,6 +1,7 @@
 package com.gquesada.moviemate.domain.usecase
 
 import com.gquesada.moviemate.domain.model.Movie
+import com.gquesada.moviemate.domain.model.MovieWithUserState
 import com.gquesada.moviemate.domain.model.TasteSignals
 import com.gquesada.moviemate.domain.repository.MovieRepository
 import com.gquesada.moviemate.domain.repository.UserMovieRepository
@@ -34,12 +35,31 @@ class BuildCandidateSetUseCase(
         if (cachedCatalog.size < MIN_CATALOG_SIZE) {
             cachedCatalog = backfillCatalog()
         }
+        val similarMovies = fetchSimilarToRecent(watched, favorites)
 
-        val candidates = (userHistoryMovies + cachedCatalog)
+        val candidates = (userHistoryMovies + similarMovies + cachedCatalog)
             .distinctBy { it.tmdbId }
             .take(maxCandidates)
 
         return candidates to signals
+    }
+
+    /**
+     * Pulls TMDB's "similar movies" for a handful of the user's most recent watched/favorite
+     * titles (design doc &sect;14 lists this as a candidate source) so the pool itself is
+     * taste-informed, not just the ranking that runs over it afterwards.
+     */
+    private suspend fun fetchSimilarToRecent(
+        watched: List<MovieWithUserState>,
+        favorites: List<MovieWithUserState>,
+    ): List<Movie> = coroutineScope {
+        val seeds = (watched.map { it.movie } + favorites.map { it.movie })
+            .distinctBy { it.tmdbId }
+            .take(SIMILAR_SEED_COUNT)
+        seeds
+            .map { seed -> async { runCatching { movieRepository.getSimilarMovies(seed.tmdbId) }.getOrDefault(emptyList()) } }
+            .awaitAll()
+            .flatten()
     }
 
     /**
@@ -64,5 +84,6 @@ class BuildCandidateSetUseCase(
         const val MAX_CANDIDATES = 1000
         const val MIN_CATALOG_SIZE = 300
         const val BACKFILL_PAGES = 3
+        const val SIMILAR_SEED_COUNT = 5
     }
 }

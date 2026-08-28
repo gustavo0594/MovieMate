@@ -19,10 +19,18 @@ internal object RecommendationScoring {
         signals.favoriteMovies.forEach { movie ->
             movie.genres.forEach { genre -> raw[genre] = (raw[genre] ?: 0.0) + 3.0 }
         }
-        val total = raw.values.sum()
+        // Dampens genres of past recommendations the user never acted on, instead of
+        // contributing to them (design doc &sect;27's feedback loop).
+        signals.declinedMovies.forEach { movie ->
+            movie.genres.forEach { genre -> raw[genre] = (raw[genre] ?: 0.0) - DECLINE_WEIGHT }
+        }
+        val floored = raw.mapValues { it.value.coerceAtLeast(0.0) }
+        val total = floored.values.sum()
         if (total <= 0.0) return emptyMap()
-        return raw.mapValues { it.value / total }
+        return floored.mapValues { it.value / total }
     }
+
+    private const val DECLINE_WEIGHT = 1.5
 
     /** Bounded roughly to [0, 100]: up to 50 from genre overlap, up to 10 from TMDB rating, 40 base. */
     fun affinityScore(movie: Movie, genreAffinity: Map<String, Double>): Double {

@@ -5,4 +5,6 @@ data class TasteSignals(
     val watchedWithRatings: List<MovieWithUserState>,
     val favoriteMovies: List<Movie>,
     val watchlistMovies: List<Movie>,
+    /** Past recommendations the user never acted on (design doc &sect;27's feedback loop). */
+    val declinedMovies: List<Movie> = emptyList(),
 )
