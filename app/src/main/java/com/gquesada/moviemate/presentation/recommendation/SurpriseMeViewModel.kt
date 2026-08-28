@@ -3,6 +3,7 @@ package com.gquesada.moviemate.presentation.recommendation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gquesada.moviemate.domain.usecase.GetSurpriseMeRecommendationUseCase
+import com.gquesada.moviemate.domain.usecase.ObserveModelAvailabilityUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,12 +12,18 @@ import kotlinx.coroutines.launch
 
 class SurpriseMeViewModel(
     private val getSurpriseMeRecommendation: GetSurpriseMeRecommendationUseCase,
+    observeModelAvailability: ObserveModelAvailabilityUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SurpriseMeUiState())
     val uiState: StateFlow<SurpriseMeUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            observeModelAvailability().collect { availability ->
+                _uiState.update { it.copy(modelAvailability = availability) }
+            }
+        }
         surpriseMe()
     }
 

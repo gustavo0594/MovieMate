@@ -45,6 +45,9 @@ captures/
 .idea/assetWizardSettings.xml
 .idea/gradle.xml
 .idea/misc.xml
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/runConfigurations.xml
 *.ipr
 
 # Keystore files

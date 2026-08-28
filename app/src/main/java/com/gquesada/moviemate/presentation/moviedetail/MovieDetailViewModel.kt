@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gquesada.moviemate.domain.repository.MovieRepository
 import com.gquesada.moviemate.domain.repository.UserMovieRepository
+import com.gquesada.moviemate.domain.usecase.MarkRecommendationAcceptedUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +15,7 @@ class MovieDetailViewModel(
     private val movieId: Int,
     private val movieRepository: MovieRepository,
     private val userMovieRepository: UserMovieRepository,
+    private val markRecommendationAccepted: MarkRecommendationAcceptedUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -43,16 +45,29 @@ class MovieDetailViewModel(
 
     fun toggleFavorite() {
         val isFavorite = _uiState.value.userState?.isFavorite ?: false
-        viewModelScope.launch { userMovieRepository.setFavorite(movieId, !isFavorite) }
+        val turningOn = !isFavorite
+        viewModelScope.launch {
+            userMovieRepository.setFavorite(movieId, turningOn)
+            // Favoriting/watchlisting/watching a movie is a real signal that a past
+            // recommendation for it landed -- close the loop design doc &sect;27 describes.
+            if (turningOn) markRecommendationAccepted(movieId)
+        }
     }
 
     fun toggleWatchlist() {
         val inWatchlist = _uiState.value.userState?.isInWatchlist ?: false
-        viewModelScope.launch { userMovieRepository.setInWatchlist(movieId, !inWatchlist) }
+        val turningOn = !inWatchlist
+        viewModelScope.launch {
+            userMovieRepository.setInWatchlist(movieId, turningOn)
+            if (turningOn) markRecommendationAccepted(movieId)
+        }
     }
 
     fun markWatched(rating: Int? = null) {
-        viewModelScope.launch { userMovieRepository.setWatched(movieId, watched = true, personalRating = rating) }
+        viewModelScope.launch {
+            userMovieRepository.setWatched(movieId, watched = true, personalRating = rating)
+            markRecommendationAccepted(movieId)
+        }
     }
 
     fun clearWatched() {

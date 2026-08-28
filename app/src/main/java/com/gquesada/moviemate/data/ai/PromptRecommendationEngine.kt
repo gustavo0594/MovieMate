@@ -1,11 +1,11 @@
 package com.gquesada.moviemate.data.ai
 
-import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
+import com.gquesada.moviemate.domain.model.ModelAvailability
 import com.gquesada.moviemate.domain.model.Movie
 import com.gquesada.moviemate.domain.model.Recommendation
 import com.gquesada.moviemate.domain.model.TasteSignals
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
@@ -22,25 +22,21 @@ import kotlinx.serialization.json.Json
  * [recommend] never throws to the caller: it returns null whenever the model isn't ready,
  * fails, or answers with something outside the candidate set, so
  * [com.gquesada.moviemate.data.repository.RecommendationRepositoryImpl] can fall back to
- * [FallbackHeuristicRanker] instead of leaving "Surprise Me" stuck.
+ * [FallbackHeuristicRanker] instead of leaving "Surprise Me" stuck. [modelAvailability] tracks
+ * *why*, so the UI can show a download progress bar or an "unsupported device" message instead
+ * of a silent switch to the fallback ranker.
  */
 class PromptRecommendationEngine : RecommendationEngine {
 
     private val json = Json { ignoreUnknownKeys = true }
+    private val readiness = PromptModelReadiness()
+
+    val modelAvailability: StateFlow<ModelAvailability> = readiness.modelAvailability
 
     override suspend fun recommend(candidates: List<Movie>, signals: TasteSignals, userMood: String?): Recommendation? {
         val model = Generation.getClient()
         return try {
-            when (model.checkStatus()) {
-                FeatureStatus.AVAILABLE -> {}
-                FeatureStatus.DOWNLOADABLE -> {
-                    // Drain the download to completion; this can take a while on first run,
-                    // so a real UI should surface progress instead of blocking silently.
-                    model.download().collect { }
-                    if (model.checkStatus() != FeatureStatus.AVAILABLE) return null
-                }
-                else -> return null
-            }
+            if (!readiness.ensureModelReady(model)) return null
 
             val genreAffinity = RecommendationScoring.genreAffinity(signals)
             val shortlisted = candidates
@@ -63,6 +59,7 @@ class PromptRecommendationEngine : RecommendationEngine {
                 fromAi = true,
             )
         } catch (t: Throwable) {
+            readiness.markError()
             null
         } finally {
             model.close()
@@ -100,15 +97,34 @@ class PromptRecommendationEngine : RecommendationEngine {
         if (!userMood.isNullOrBlank()) {
             appendLine("Tonight's mood: \"$userMood\"")
         }
+        val favoritePeople = topPeople(signals)
+        if (favoritePeople.isNotEmpty()) {
+            appendLine("Favorite directors/actors (by frequency in watched+favorites): ${favoritePeople.joinToString(", ")}")
+        }
         appendLine()
-        appendLine("CANDIDATES (id | title (year) | genres | TMDB rating)")
+        appendLine("CANDIDATES (id | title (year) | genres | director | TMDB rating)")
         candidates.forEach { movie ->
             val year = movie.releaseDate.take(4)
-            appendLine("${movie.tmdbId} | ${movie.title} ($year) | ${movie.genres.joinToString("/")} | ${movie.voteAverage}")
+            val director = movie.directors.firstOrNull() ?: "unknown"
+            appendLine(
+                "${movie.tmdbId} | ${movie.title} ($year) | ${movie.genres.joinToString("/")} | " +
+                    "$director | ${movie.voteAverage}",
+            )
         }
+    }
+
+    /** Top directors/cast by frequency across watched+favorites (design doc &sect;13). */
+    private fun topPeople(signals: TasteSignals): List<String> {
+        val counts = mutableMapOf<String, Int>()
+        val allMovies = signals.watchedWithRatings.map { it.movie } + signals.favoriteMovies
+        allMovies.forEach { movie ->
+            (movie.directors + movie.cast).forEach { person -> counts[person] = (counts[person] ?: 0) + 1 }
+        }
+        return counts.entries.sortedByDescending { it.value }.take(TOP_PEOPLE_COUNT).map { it.key }
     }
 
     private companion object {
         const val MAX_CANDIDATES_IN_PROMPT = 120
+        const val TOP_PEOPLE_COUNT = 3
     }
 }

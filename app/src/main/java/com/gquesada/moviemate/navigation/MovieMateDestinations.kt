@@ -11,4 +11,6 @@ import kotlinx.serialization.Serializable
 // Secondary destinations -- pushed on top of whichever primary tab is active.
 @Serializable object SearchRoute
 @Serializable object SurpriseMeRoute
+@Serializable object TasteProfileRoute
+@Serializable object AssistantRoute
 @Serializable data class MovieDetailRoute(val movieId: Int)

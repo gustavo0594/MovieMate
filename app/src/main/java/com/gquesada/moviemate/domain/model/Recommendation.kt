@@ -10,9 +10,15 @@ data class Recommendation(
     val fromAi: Boolean,
 )
 
-enum class HomeSectionType { POPULAR, TOP_RATED, NOW_PLAYING, UPCOMING }
+enum class HomeSectionType { PICKED_FOR_YOU, POPULAR, TOP_RATED, NOW_PLAYING, UPCOMING }
 
 data class HomeSection(
     val type: HomeSectionType,
     val movies: List<Movie>,
+)
+
+/** What Home shows (design doc &sect;06): a live top pick plus the usual discovery rows. */
+data class HomeSections(
+    val tonightsPick: Recommendation?,
+    val sections: List<HomeSection>,
 )

@@ -24,7 +24,11 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { getHomeSections() }
-                .onSuccess { sections -> _uiState.update { it.copy(isLoading = false, sections = sections) } }
+                .onSuccess { homeSections ->
+                    _uiState.update {
+                        it.copy(isLoading = false, tonightsPick = homeSections.tonightsPick, sections = homeSections.sections)
+                    }
+                }
                 .onFailure { e -> _uiState.update { it.copy(isLoading = false, error = e.message ?: "Something went wrong") } }
         }
     }
